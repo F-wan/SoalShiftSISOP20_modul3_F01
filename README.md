@@ -18,7 +18,7 @@
 ## Soal no. 2
 
 
-### [Source code : soal2.c](soal2)
+### [Source code : soal2](soal2)
 
 
 ### PENJELASAN
@@ -286,7 +286,7 @@ int main(int argc, char const *argv[])
 ## Soal no. 4
 
 
-### [Source code : soal3.c](soal3/soal3.c)
+### [Source code : soal4](soal4)
 
 
 ### PENJELASAN
@@ -299,74 +299,72 @@ int main(int argc, char const *argv[])
 #include <sys/ipc.h> 
 #include <sys/shm.h> 
 
-void *perkalian(void* arg);
-void* playandcount (void *arg);
+void *mult(void* arg) 
+{ 
+  int *data = (int *)arg; 
+  int k = 0, i = 0; 
+
+  int x = data[0]; 
+  for (i = 1; i <= x; i++)
+    k += data[i]*data[i+x]; 
+
+  int *p = (int*)malloc(sizeof(int)); 
+  *p = k; 
+
+  pthread_exit(p); 
+} 
 
 int main() 
 { 
-  int matA[4][2] = { {3,  21 },
-                     {2,  11 },
-                     {5,  3 },
-                     {5,  6 } };
-  int matB[2][5] = { { 1,  3,  5,  12,  9 },
-                     {5,  6, 8,  10,  4 } };
+  int matA[4][2] = { {1,  20 },
+                     {4,  17 },
+                     {7,  8 },
+                     {1,  12 } };
+  int matB[2][5] = { { 1,  3,  2,  14,  9 },
+                     {19,  2, 16,  13,  1 } };
 
-  int H1=4;
-  int I1=2;
-  int H2=2;
-  int I2=5;
-  int A,B,C; 
+  int r1=4;
+  int c1=2;
+  int r2=2;
+  int c2=5;
+  int i,j,k; 
   int val = 1;
 
-  printf("Matrix kedua:\n");
-  for (A = 0; A < H2; A++){ 
-    for(B = 0; B < I2; B++) 
-      printf("%-2d ",matB[A][B]); 
-    printf("\n");     
-  } 
-  
-  printf("Matrix pertama:\n");
-  if (A = 0; A < H1; A++){ 
-    else if(B = 0; B < I1; B++) 
-     printf("%-2d ",matA[A][B]); 
+  printf("First Matrix:\n");
+  for (i = 0; i < r1; i++){ 
+    for(j = 0; j < c1; j++) 
+     printf("%-2d ",matA[i][j]); 
     printf("\n"); 
   } 
 
-  int max = H1*I2; 
+  printf("Second Matrix:\n");
+  for (i = 0; i < r2; i++){ 
+    for(j = 0; j < c2; j++) 
+      printf("%-2d ",matB[i][j]); 
+    printf("\n");     
+  } 
+
+  int max = r1*c2; 
 
   pthread_t *threads; 
   threads = (pthread_t*)malloc(max*sizeof(pthread_t)); 
 
-  printf(" Matrix Hasil :\n"); 
-  for (A = 0; A < max; A++)  
-  { 
-    void *C; 
-
-    pthread_join(threads[A], &C); 
-    
-    int *p = (int *)C;
-    value[A] = *p;
-    printf("%-3d ", value[A]); 
-    if ((A + 1) % I2 == 0) 
-      printf("\n"); 
-  }
-
-  int hitung = 0; 
-  int* file = NULL; 
-  if (A = 0; A < H1; A++) 
-    else if (B = 0; B < I2; B++) 
+  int count = 0; 
+  int* data = NULL; 
+  for (i = 0; i < r1; i++) 
+    for (j = 0; j < c2; j++) 
     { 
-      file = (int *)malloc((20)*sizeof(int)); 
-      file[0] = I1; 
+      data = (int *)malloc((20)*sizeof(int)); 
+      data[0] = c1; 
 
-      for (C = 0; C < I1; C++) 
-      file[C+1] = matA[A][C]; 
+      for (k = 0; k < c1; k++) 
+      data[k+1] = matA[i][k]; 
 
-      for (C = 0; C < H2; C++) 
-      file[C+I1+1] = matB[C][B]; 
+      for (k = 0; k < r2; k++) 
+      data[k+c1+1] = matB[k][j]; 
 
-      pthread_create(&threads[hitung++], NULL,  
-        mult, (void*)(file)); 
+      pthread_create(&threads[count++], NULL,  
+        mult, (void*)(data)); 
     } 
 
   key_t key = 1234;
@@ -375,49 +373,122 @@ int main()
   int shmid = shmget(key, sizeof(int), IPC_CREAT | 0666);
   value = shmat(shmid, NULL, 0);
 
+  printf("Result Matrix:\n"); 
+  for (i = 0; i < max; i++)  
+  { 
+    void *k; 
+
+    pthread_join(threads[i], &k); 
+    
+    int *p = (int *)k;
+    value[i] = *p;
+    printf("%-3d ", value[i]); 
+    if ((i + 1) % c2 == 0) 
+      printf("\n"); 
+  }
   shmdt((void *) value);
 
   return 0; 
 } 
-
-void* playandcount (void *arg) {
-
-    pthread_t id = pthread_self();
-
-    if (pthread_equal(id, tid[0]))      // baris 1 matriks c
-        for (int i = 0; i < 5; i++) 
-            C[0][i] = A[0][0]*B[0][i] + A[0][1]*B[1][i];
-    else if (pthread_equal(id, tid[1])) // baris 2 matriks c
-        for (int i = 0; i < 5; i++)
-            C[1][i] = A[1][0]*B[0][i] + A[1][1]*B[1][i];
-    else if (pthread_equal(id, tid[2])) // baris 3 matriks c
-        for (int i = 0; i < 5; i++)
-            C[2][i] = A[2][0]*B[0][i] + A[2][1]*B[2][i];
-    else if (pthread_equal(id, tid[3])) // baris 4 matriks c
-        for (int i = 0; i < 5; i++)
-            C[3][i] = A[3][0]*B[0][i] + A[3][1]*B[3][i];
-
-}
-
-void *perkalian(void* arg) 
-{ 
-  int *file = (int *)arg; 
-  int C = 0, A = 0; 
-
-  int x = file[0]; 
-  for (A = 1; A <= x; A++) 
-    C += file[A]*file[A+x]; 
-
-  int *p = (int*)malloc(sizeof(int)); 
-  *p = C; 
-
-  pthread_exit(p); 
-} 
-
-
 ```
 
 - 4b adalah menampilan penjumlahan faktorial dari hasil perkalian matriks dari program 4a.c
+```c
+#include <pthread.h> 
+#include <stdio.h>
+#include <stdlib.h> 
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <unistd.h>
 
+void *find_fact(void* arg) 
+{ 
+  int data = *(int*)arg;
+  unsigned long long k = 1; 
+
+  for (int i = 1; i <= data; i++)
+    k = k + i;
+
+  unsigned long long *p = (unsigned long long*)malloc(sizeof(unsigned long long)); 
+  *p = k; 
+
+  pthread_exit(p); 
+}
+
+int main()
+{
+  key_t key = 1234;
+  int *value;
+  int fact[20];
+
+  int shmid = shmget(key, sizeof(int), IPC_CREAT | 0666);
+  value = shmat(shmid, NULL, 0);
+
+  for (int i = 0; i < 20; i++)  
+  { 
+    printf("%-3d ", value[i]); 
+    if ((i + 1) % 5 == 0) 
+      printf("\n"); 
+  }
+  
+  pthread_t threads[20]; 
+  for (int i = 0; i < 20; i++)  
+  {
+    // int *new_val = &i;
+    int *new_val = &value[i];
+    pthread_create(&threads[i], NULL, find_fact, (void *)new_val);
+  }
+  
+  for (int i = 0; i < 20; i++)  
+  { 
+    void *k; 
+
+    pthread_join(threads[i], &k);
+    
+    unsigned long long *p = (unsigned long long *)k;
+    printf("%-4llu ",*p);
+    if ((i + 1) % 5 == 0)
+      printf("\n"); 
+  }
+
+  shmdt(value);
+  shmctl(shmid, IPC_RMID, NULL);
+}
+
+```
 
 - 4c adalah menampilkan jumlah file yang terdapat di direktori
+```c
+#include <stdlib.h>
+#include <unistd.h>
+
+int pipe1[2];
+
+int main()
+{
+  if (pipe(pipe1) == -1)
+    exit(1);
+
+  if ((fork()) == 0) 
+  {
+    dup2(pipe1[1], 1);
+
+    close(pipe1[0]);
+    close(pipe1[1]);
+    
+    char *argv1[] = {"ls", NULL};
+		execv("/bin/ls", argv1);
+  }
+  else
+  {
+    dup2(pipe1[0], 0);
+
+    close(pipe1[0]);
+    close(pipe1[1]);
+
+    char *argv1[] = {"wc", "-l", NULL};
+		execv("/usr/bin/wc", argv1);
+  }
+}
+
+```
