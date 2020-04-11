@@ -7,7 +7,18 @@
 - [Soal 4](soal4/)
 
 ## Soal no. 1
+Poke*ZONE adalah sebuah game berbasis text terminal mirip dengan Pokemon GO.
+Ketentuan permainan sebagai berikut:
 
+a. Menggunakan IPC-shared memory, thread, fork-exec.
+
+b. Kalian bebas berkreasi dengan game ini asal tidak konflik dengan
+requirements yang ada. (Contoh: memberi nama trainer, memberi notifikasi
+kalau barang di shop sudah penuh, dan lain-lain).
+
+c. Terdapat 2 code yaitu soal2_traizone.c dan soal2_pokezone.c.
+
+d. soal2_traizone.c mengandung fitur:
 
 
 ### [Source code : soal1.c](soal1)
