@@ -1,30 +1,9 @@
 # SoalShiftSISOP20_modul3_F01
 
 ## directory soal
-- [Soal 1](soal1/)
 - [Soal 2](soal2/)
 - [Soal 3](soal3/)
 - [Soal 4](soal4/)
-
-## Soal no. 1
-Poke*ZONE adalah sebuah game berbasis text terminal mirip dengan Pokemon GO.
-Ketentuan permainan sebagai berikut:
-
-a. Menggunakan IPC-shared memory, thread, fork-exec.
-
-b. Kalian bebas berkreasi dengan game ini asal tidak konflik dengan
-requirements yang ada. (Contoh: memberi nama trainer, memberi notifikasi
-kalau barang di shop sudah penuh, dan lain-lain).
-
-c. Terdapat 2 code yaitu soal2_traizone.c dan soal2_pokezone.c.
-
-d. soal2_traizone.c mengandung fitur:
-
-
-### [Source code : soal1.c](soal1)
-
-### PENJELASAN
-
 
 ## Soal no. 2
 
@@ -291,184 +270,427 @@ int main(int argc, char const *argv[])
 
 
 ### PENJELASAN
+- Pada soal no 3 kita diminta untuk mengkategorikan fila pada lokasi tertentu berdasarkan argumen yang diberikan
+- Apabila argumennya `"-f"`, program akan mengkategorikan file yang ada pada argumen ke dalam folder berdasarkan ekstensi file tersebut, dan folder berada pada working directory program
+- Apabila argumen pertama adalah `"-f"`, maka program tidak akan menerima input berupa folder
+```c
+if(strcmp(argv[1], "-f") == 0)
+{
+  puts("Masuk ke -f");
+  
+  while (i < argc)
+  {
+    if(!is_regular_file(argv[i]))
+    {
+      puts("EXIT not a file");
+      exit(EXIT_FAILURE);
+    }
+
+    pthread_create(&(tid), NULL, cek_file, (void *)argv[i]);
+    pthread_join(tid, NULL);
+    i++;
+  }
+}
+```
+- Apabila argumennya `"*"`, program akan mengkategorikan semua file yang ada pada working directory ke dalam folder berdasarkan ekstensinya
+```c
+else if(strcmp(argv[1], "*") == 0)
+{
+  puts("Masuk ke *");
+
+  // Error handling ketika argumennya lebih
+  if (argc > 2)
+  {
+    puts("Mohon tidak memasukkan argumen lain ketika menggunakan mode *");
+    exit(EXIT_FAILURE);
+  }
+  
+  // List semua path file pada working directory
+  printf("path = ");
+  puts(path);
+  list_file(path);
+
+  // Read path tiap line kecuali list_file.txt dan nama program
+  read_path(argv[0]);
+}
+```
+- Apabila argumen yang diterima adalah`"-d"`, maka program akan mengkategorikan semua file pada folder yang diberikan pada argumen ke dalam folder berdasarkan ekstensi file tersebut, dan folder berada pada working directory program
+```c
+else if(strcmp(argv[1], "-d") == 0)
+{
+  puts("Masuk ke -d");
+
+  if (argc > 3)
+  {
+    puts("Mohon hanya memasukkan satu path directory!");
+    exit(EXIT_FAILURE);
+  }
+  
+  list_file(argv[2]);
+  read_path(argv[0]);
+}
+```
+
+- Kemudian pada fungsi `cek_file`, kita memeriksa apakah file memiliki ekstensi seperti `.zip`, `.jpg`, `.JPG`, dan lain sebagainya.
+- Apabila tidak memiliki ekstensi, file akan masuk ke folder `Unknown`
+```c
+void *cek_file(void *arg)
+{
+  // Lock mutex
+  pthread_mutex_lock(&lock);
+
+  nama_file = strrchr((char *)arg, '/') + 1;
+  alamat_file = (char *)arg;
+
+  printf("Nama file: %s\n", nama_file);
+  printf("Alamat file: %s\n", alamat_file);
+
+  if(cari_ekstensi(nama_file))
+  { 
+    cek_folder(cari_ekstensi(nama_file));
+    move_file(path, cari_ekstensi(nama_file), nama_file, alamat_file);
+  }
+  else
+  { 
+    cek_folder("Unknown");
+    move_file(path, "Unknown", nama_file, alamat_file);
+  }
+
+  // Unlock mutex
+  pthread_mutex_unlock(&lock);
+  return NULL;
+}
+```
+
+- Pada fungsi `cari_ekstensi`, program akan memeriksa ekstensi dari file dan mengembalikan ekstensi file tersebut.
+- Kemudian karena pada soal file `.jpg` dan `.JPG` dimasukkan ke dalam 1 folder, maka kami anggap mereka masuk ke folder `jpg`.
+- Maka dari itu dilakukan perubahan ekstensi file menjadi lower case dengan fungsi `tolower`
+```c
+char *cari_ekstensi(char *filename)
+{
+  char *temp = filename;
+
+  char *extension = strrchr(temp, '.');
+  printf("dot = %s\n", extension);
+
+
+  if(!extension || extension == temp) return 0;
+  
+  int len = 0;
+  char tipe[100];
+
+  extension = extension+1;
+  strcpy(tipe, extension);
+
+  printf("extension awal = %s\t\t", extension);
+  printf("tipe awal = %s\n", tipe);
+
+  if((extension[strlen(extension)-1] >= 'a' && extension[strlen(extension)-1] <= 'z') || (extension[strlen(extension)-1] >= 'A' && extension[strlen(extension)-1] <= 'Z'))
+  {
+    for(int i = 0; tipe[i]; i++)
+    {
+      tipe[i] = tolower(tipe[i]);
+      len++;
+    }
+  }
+
+  extension = tipe;
+  printf("len = %d\t\t\t\t extension = ", len);
+  puts(extension);
+
+  return extension;
+}
+```
+
+- Setelah kita mengetahui nama folder tempat file akan dipindahkan, kita cek terlebih dahulu apakah folder tersebut ada.
+- Jika tidak ada, maka kita buat folder tersebut
+- Semua proses ini dilakukan pada fungsi `cek_folder`
+```c
+void* cek_folder(char *foldername)
+{
+  int len = 0;
+  char tipe[100];
+
+  strcpy(tipe, foldername);
+
+  printf("foldername awal = %s\t\t", foldername);
+  printf("tipe awal = %s\n", tipe);
+
+  if(!strcmp(foldername, "Unknown"))
+  {
+
+  }
+  else if((foldername[strlen(foldername)-1] >= 'a' && foldername[strlen(foldername)-1] <= 'z') || (foldername[strlen(foldername)-1] >= 'A' && foldername[strlen(foldername)-1] <= 'Z'))
+  {
+    for(int i = 0; tipe[i]; i++)
+    {
+      tipe[i] = tolower(tipe[i]);
+      len++;
+    }
+  }
+
+  foldername = tipe;
+  printf("len = %d\t\t\t\t foldername = ", len);
+  puts(foldername);
+  int exist = 0;
+
+  DIR *d;
+  struct dirent *dir;
+  d = opendir(".");
+
+  while((dir = readdir(d)) != NULL) //smpe gada file lagi di dir
+  {
+    if(strcmp(dir->d_name,".") == 0 || strcmp(dir->d_name, "..") == 0) continue;
+
+    //bukan file = dir
+    if(!is_regular_file(dir->d_name))
+    {
+      if(!strcmp(foldername, dir->d_name))
+      {
+        printf("dir %s exist\n", dir->d_name);
+        exist = 1;
+      }
+    }
+  }
+  closedir(d);
+
+  if (!exist)
+  {
+    printf("mkdir %s\n", foldername);
+    mkdir(foldername, 0700);
+  }
+  else
+  {
+    puts("directory exist");
+  }
+}
+```
+
+- Setelah memastikan bahwa folder ada dan siap untuk memindahkan file ke sana, kita pindahkan file ke folder yang diinginkan menggunakan fungsi `move_file`
+- fungsi ini akan mengubah path ke file menjadi path baru berdasarkan lokasi folder tempat file akan dipindahkan
+```c
+void* move_file(char *pathc, char *ekstensi, char *nama_file, char *alamat_asal)
+{
+  sprintf(destpath, "%s%s/%s", pathc, ekstensi, nama_file);
+
+  printf("Asal: %s\nDestinasi: %s\n\n", alamat_asal, destpath);
+
+  if (rename (alamat_asal, destpath))
+  {
+    // something went wrong
+    if (errno == EXDEV) {
+        // copy data and meta data 
+    } else { perror("rename"); exit(EXIT_FAILURE); };
+  } 
+  else { // the rename succeeded
+  }
+}
+```
+
+### SCREENSHOT HASIL
+- uji coba argumen `"-f"`
+- dapat dilihat bahwa file `test.c` masuk ke folder `c`
+
+![f.png](/screenshot/f.png)
+
+- Dan apabila argumen yang diberikan adalah folder, maka program akan berhenti
+
+![fwan.png](/screenshot/fwan.png)
+
+- uji coba argumen `"*"`
+- dapat dilihat bahwa semua file `.c` masuk ke folder `c`
+
+![*.png](/screenshot/*.png)
+
+
+
+- uji coba argumen `"-d"`
+- folder yang dijadikan input dengan argumen `"-d"`
+
+![d1.png](/screenshot/d1.png)
+
+- Jalankan program dengan arguman `"-d"`
+
+![d2.png](/screenshot/d2.png)
+
+- Program selesai dijalankan
+
+![d3.png](/screenshot/d3.png)
+
+- Hasilnya, semua file akan dikelompokkan pada folder berdasarkan ekstensinya dan folder berada di working directory
+
+![d4.png](/screenshot/d4.png)
+
+- Contoh isi folder `jpg`
+
+![d5.png](/screenshot/d5.png)
 
 
 
 ## Soal no. 4
-
-
-### [Source code : soal4](soal4)
-
-
-### PENJELASAN
-- 4a adalah program untuk menghitung perkalian matriks menggunakan thread seperti latihan kemarin
+### PENJELASAN 4A
+### [Source code : soal4a.c](soal4/soal4a.c)
+- Di soal 4a ini kita membuat program yang dapat meng-kalikan matrik 5x2 dengan matriks 2x5. yang berisikan angka 1-20. Isi dari matriks di definisikan di dalam kodingan. Hasil akan di tampilkan dan juga di simpan agar bisa di gunakan di program 4b.
 ```c
-#include <stdio.h> 
-#include <pthread.h> 
-#include <unistd.h> 
-#include <stdlib.h> 
-#include <sys/ipc.h> 
-#include <sys/shm.h> 
-
-void *mult(void* arg) 
-{ 
-  int *data = (int *)arg; 
-  int k = 0, i = 0; 
-
-  int x = data[0]; 
-  for (i = 1; i <= x; i++)
-    k += data[i]*data[i+x]; 
-
-  int *p = (int*)malloc(sizeof(int)); 
-  *p = k; 
-
-  pthread_exit(p); 
-} 
-
-int main() 
-{ 
-  int matA[4][2] = { {1,  20 },
-                     {4,  17 },
-                     {7,  8 },
-                     {1,  12 } };
-  int matB[2][5] = { { 1,  3,  2,  14,  9 },
-                     {19,  2, 16,  13,  1 } };
-
-  int r1=4;
-  int c1=2;
-  int r2=2;
-  int c2=5;
-  int i,j,k; 
-  int val = 1;
-
-  printf("First Matrix:\n");
-  for (i = 0; i < r1; i++){ 
-    for(j = 0; j < c1; j++) 
-     printf("%-2d ",matA[i][j]); 
-    printf("\n"); 
-  } 
-
-  printf("Second Matrix:\n");
-  for (i = 0; i < r2; i++){ 
-    for(j = 0; j < c2; j++) 
-      printf("%-2d ",matB[i][j]); 
-    printf("\n");     
-  } 
-
-  int max = r1*c2; 
-
-  pthread_t *threads; 
-  threads = (pthread_t*)malloc(max*sizeof(pthread_t)); 
-
-  int count = 0; 
-  int* data = NULL; 
-  for (i = 0; i < r1; i++) 
-    for (j = 0; j < c2; j++) 
-    { 
-      data = (int *)malloc((20)*sizeof(int)); 
-      data[0] = c1; 
-
-      for (k = 0; k < c1; k++) 
-      data[k+1] = matA[i][k]; 
-
-      for (k = 0; k < r2; k++) 
-      data[k+c1+1] = matB[k][j]; 
-
-      pthread_create(&threads[count++], NULL,  
-        mult, (void*)(data)); 
-    } 
-
-  key_t key = 1234;
-  int *value;
-
-  int shmid = shmget(key, sizeof(int), IPC_CREAT | 0666);
-  value = shmat(shmid, NULL, 0);
-
-  printf("Result Matrix:\n"); 
-  for (i = 0; i < max; i++)  
-  { 
-    void *k; 
-
-    pthread_join(threads[i], &k); 
-    
-    int *p = (int *)k;
-    value[i] = *p;
-    printf("%-3d ", value[i]); 
-    if ((i + 1) % c2 == 0) 
-      printf("\n"); 
-  }
-  shmdt((void *) value);
-
-  return 0; 
-} 
-```
-
-- 4b adalah menampilan penjumlahan faktorial dari hasil perkalian matriks dari program 4a.c
-```c
-#include <pthread.h> 
 #include <stdio.h>
-#include <stdlib.h> 
+#include <unistd.h>
+#include <sys/shm.h>
+#include <sys/stat.h>
+#include <pthread.h>
+#include <sys/ipc.h>
+
+
+int (*value)[10];
+int hasil = 0;
+int matA[10][10], matB[10][10], 
+                        RowOf_A =4 , ColumnOf_A=2, RowOf_B=2, ColumnOf_B=5; 
+pthread_t thread1, thread2, final; 
+
+//matriks pertama
+void *A(void *arg) { 
+   matA[0][0]=2; 
+   matA[0][1]=1; 
+   matA[1][0]=4; 
+   matA[1][1]=3; 
+   matA[2][0]=2; 
+   matA[2][1]=1; 
+   matA[3][0]=4; 
+   matA[3][1]=3;
+   return NULL;
+}
+
+void *B(void *arg){
+   matB[0][0]=4;
+   matB[0][1]=1; 
+   matB[0][2]=2;
+   matB[0][3]=3; 
+   matB[0][4]=1; 
+   matB[1][0]=2;
+   matB[1][1]=1; 
+   matB[1][2]=3; 
+   matB[1][3]=1; 
+   matB[1][4]=3; 
+   return NULL;
+}
+
+void *matrix_multiplication(void *arg){
+   for(int i=0;i<RowOf_A;i++){
+      for(int j=0;j<ColumnOf_B;j++){
+         for(int k=0;k<ColumnOf_A;k++){
+            hasil+=matA[i][k] * matB[k][j]; 
+         }
+         value[i][j]= hasil; 
+         hasil = 0; 
+      }
+   }
+   return NULL;
+}
+
+int main(){
+   
+   key_t key = 1234;
+   int shmid = shmget(key, sizeof(int[10][10]), IPC_CREAT | 0666); 
+   value = shmat(shmid, 0, 0);
+
+   pthread_create(&thread1, NULL, A, NULL); 
+   pthread_join(thread1,NULL);
+
+   pthread_create(&thread2, NULL, B, NULL); 
+   pthread_join(thread2,NULL);
+
+   for(int i=0;i<RowOf_A;i++){
+      for(int j=0;j<ColumnOf_B;j++){ 
+         value[i][j]=0;
+      }
+      pthread_create(&final, NULL, matrix_multiplication, NULL); 
+      pthread_join(final,NULL);
+   }
+
+  
+   printf("A*B : \n");
+   for(int i=0; i<RowOf_A; i++){ 
+      for(int j=0;j<ColumnOf_B;j++){  
+         printf("%d\t", value[i][j]); 
+      }
+      printf("\n");
+   }
+}
+
+```
+### SCREENSHOT HASIL
+- uji coba soal 4a
+
+![4a.png](/screenshot/4a.png)
+
+### PENJELASAN 4B
+### [Source code : soal4b.c](soal4/soal4b.c)
+
+- Di soal 4b ini kita membuat program yang mengambil hasil perkalian matriks dari soal 4a dan menampilkan hasilnya ke layar. Setelah itu melakukan pencarian faktorial dari masing-masing angka pada matriks dan ditampilkan pada layar.
+```c
+#include <stdio.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <unistd.h>
+#include <pthread.h>
 
-void *find_fact(void* arg) 
-{ 
-  int data = *(int*)arg;
-  unsigned long long k = 1; 
 
-  for (int i = 1; i <= data; i++)
-    k = k + i;
+unsigned long long num; 
+int row = 4, column = 5; 
 
-  unsigned long long *p = (unsigned long long*)malloc(sizeof(unsigned long long)); 
-  *p = k; 
-
-  pthread_exit(p); 
+unsigned long long factorial(unsigned long long a){  
+    if(a==0 || a==1) return 1;
+    else return a+ factorial(a-1); 
 }
 
-int main()
-{
-  key_t key = 1234;
-  int *value;
-  int fact[20];
-
-  int shmid = shmget(key, sizeof(int), IPC_CREAT | 0666);
-  value = shmat(shmid, NULL, 0);
-
-  for (int i = 0; i < 20; i++)  
-  { 
-    printf("%-3d ", value[i]); 
-    if ((i + 1) % 5 == 0) 
-      printf("\n"); 
-  }
-  
-  pthread_t threads[20]; 
-  for (int i = 0; i < 20; i++)  
-  {
-    // int *new_val = &i;
-    int *new_val = &value[i];
-    pthread_create(&threads[i], NULL, find_fact, (void *)new_val);
-  }
-  
-  for (int i = 0; i < 20; i++)  
-  { 
-    void *k; 
-
-    pthread_join(threads[i], &k);
+//fungsi faktorial
+void *faktorial(void *arg){
     
-    unsigned long long *p = (unsigned long long *)k;
-    printf("%-4llu ",*p);
-    if ((i + 1) % 5 == 0)
-      printf("\n"); 
-  }
+    key_t key = 1234;
+    int (*value)[10];
+    int shmid = shmget(key, sizeof(int), IPC_CREAT | 0666);
+    value = shmat(shmid, 0, 0);
+    
+    printf("Hasil faktorial pertambahan matriks ialah: \n");
+    
+    for(int i=0;i<row;i++){ 
+        for(int j=0;j<column;j++){ 
+            num=value[i][j]; 
+            printf("%llu\t", factorial(num)); 
+        }
+        printf("\n");
+    }
+    pthread_exit(0); // keluar thread
+}
 
-  shmdt(value);
-  shmctl(shmid, IPC_RMID, NULL);
+void main(){
+    pthread_t thread;
+    
+    key_t key = 1234;
+    int (*value)[10];
+    int shmid = shmget(key, sizeof(int), IPC_CREAT | 0666);
+    value = shmat(shmid,NULL ,0 );
+
+    printf("Hasil perkalian dari matriks A dan B adalah: \n");
+    
+    for(int i=0;i< 4;i++){
+        for(int j=0;j<5;j++){
+            printf("%d\t", value[i][j]);
+        }
+        printf("\n");
+    }
+    pthread_create(&thread, NULL, faktorial, NULL); 
+    pthread_join(thread,NULL); 
 }
 
 ```
+### SCREENSHOT HASIL
+- uji coba soal 4b
 
-- 4c adalah menampilkan jumlah file yang terdapat di direktori
+![4b.png](/screenshot/4b.png)
+
+### PENJELASAN 4C
+### [Source code : soal4c.c](soal4/soal4c.c)
+- Di soal 4c kita mencari tahu ada berapa jumlah file yang terdapat di direktori. Setelah mengetahui jumlah file terus jumlah file di tampilkan ke layar.
 ```c
 #include <stdlib.h>
 #include <unistd.h>
@@ -503,3 +725,8 @@ int main()
 }
 
 ```
+### SCREENSHOT HASIL
+- Uji coba soal 4c
+- Hasil yang ditunjukkan adalah 6
+- Hal ini terbukti saat menjalankan perintah `ls` pada terminal muncul 6 file pada working directory
+![4c.png](/screenshot/4c.png)

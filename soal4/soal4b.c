@@ -1,60 +1,54 @@
-#include <pthread.h> 
 #include <stdio.h>
-#include <stdlib.h> 
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <unistd.h>
+#include <pthread.h>
 
-void *find_fact(void* arg) 
-{ 
-  int data = *(int*)arg;
-  unsigned long long k = 1; 
 
-  for (int i = 1; i <= data; i++)
-    k = k + i;
+unsigned long long num; 
+int row = 4, column = 5; 
 
-  unsigned long long *p = (unsigned long long*)malloc(sizeof(unsigned long long)); 
-  *p = k; 
-
-  pthread_exit(p); 
+unsigned long long factorial(unsigned long long a){  
+    if(a==0 || a==1) return 1;
+    else return a+ factorial(a-1); 
 }
 
-int main()
-{
-  key_t key = 1234;
-  int *value;
-  int fact[20];
-
-  int shmid = shmget(key, sizeof(int), IPC_CREAT | 0666);
-  value = shmat(shmid, NULL, 0);
-
-  for (int i = 0; i < 20; i++)  
-  { 
-    printf("%-3d ", value[i]); 
-    if ((i + 1) % 5 == 0) 
-      printf("\n"); 
-  }
-  
-  pthread_t threads[20]; 
-  for (int i = 0; i < 20; i++)  
-  {
-    // int *new_val = &i;
-    int *new_val = &value[i];
-    pthread_create(&threads[i], NULL, find_fact, (void *)new_val);
-  }
-  
-  for (int i = 0; i < 20; i++)  
-  { 
-    void *k; 
-
-    pthread_join(threads[i], &k);
+//fungsi faktorial
+void *faktorial(void *arg){
     
-    unsigned long long *p = (unsigned long long *)k;
-    printf("%-4llu ",*p);
-    if ((i + 1) % 5 == 0)
-      printf("\n"); 
-  }
+    key_t key = 1234;
+    int (*value)[10];
+    int shmid = shmget(key, sizeof(int), IPC_CREAT | 0666);
+    value = shmat(shmid, 0, 0);
+    
+    printf("Hasil faktorial pertambahan matriks ialah: \n");
+    
+    for(int i=0;i<row;i++){ 
+        for(int j=0;j<column;j++){ 
+            num=value[i][j]; 
+            printf("%llu\t", factorial(num)); 
+        }
+        printf("\n");
+    }
+    pthread_exit(0); // keluar thread
+}
 
-  shmdt(value);
-  shmctl(shmid, IPC_RMID, NULL);
+void main(){
+    pthread_t thread;
+    
+    key_t key = 1234;
+    int (*value)[10];
+    int shmid = shmget(key, sizeof(int), IPC_CREAT | 0666);
+    value = shmat(shmid,NULL ,0 );
+
+    printf("Hasil perkalian dari matriks A dan B adalah: \n");
+    
+    for(int i=0;i< 4;i++){
+        for(int j=0;j<5;j++){
+            printf("%d\t", value[i][j]);
+        }
+        printf("\n");
+    }
+    pthread_create(&thread, NULL, faktorial, NULL); 
+    pthread_join(thread,NULL); 
 }

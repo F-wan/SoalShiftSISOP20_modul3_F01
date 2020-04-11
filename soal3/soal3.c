@@ -20,6 +20,13 @@ int index_file = 0;
 pthread_mutex_t lock;
 pthread_t tid;
 
+int is_regular_file(const char *path)
+{
+  struct stat path_stat;
+  stat(path, &path_stat);
+  return S_ISREG(path_stat.st_mode);
+} 
+
 // fungsi buat mencari path dari file c
 void path_c(char *str)
 {
@@ -69,9 +76,6 @@ void list_file(char *path)
   }
 }
 
-// fungsi:
-// 1. Read per line di list_file.txt 
-// 2. Buat thread dan run thread ke cek_file
 void read_path(char *arg)
 {
   FILE* filePointer;
@@ -122,7 +126,6 @@ void read_path(char *arg)
     puts("list_file.txt tidak bisa dihapus");
 }
 
-// fungsi cari ekstensi file
 char *cari_ekstensi(char *filename)
 {
   char *temp = filename;
@@ -158,7 +161,6 @@ char *cari_ekstensi(char *filename)
   return extension;
 }
 
-// fungsi cek dan buat folder
 void* cek_folder(char *foldername)
 {
   int len = 0;
@@ -185,21 +187,41 @@ void* cek_folder(char *foldername)
   foldername = tipe;
   printf("len = %d\t\t\t\t foldername = ", len);
   puts(foldername);
+  int exist = 0;
 
-  struct stat st = {0};
+  DIR *d;
+  struct dirent *dir;
+  d = opendir(".");
 
-  if (stat(foldername, &st) == -1)
+  while((dir = readdir(d)) != NULL) //smpe gada file lagi di dir
+  {
+    if(strcmp(dir->d_name,".") == 0 || strcmp(dir->d_name, "..") == 0) continue;
+
+    //bukan file = dir
+    if(!is_regular_file(dir->d_name))
+    {
+      if(!strcmp(foldername, dir->d_name))
+      {
+        printf("dir %s exist\n", dir->d_name);
+        exist = 1;
+      }
+    }
+  }
+  closedir(d);
+
+  if (!exist)
   {
     printf("mkdir %s\n", foldername);
     mkdir(foldername, 0700);
-  } 
-    
+  }
+  else
+  {
+    puts("directory exist");
+  }
 }
 
-// fungsi buat move file
 void* move_file(char *pathc, char *ekstensi, char *nama_file, char *alamat_asal)
 {
-  // char destpath[1024];
   sprintf(destpath, "%s%s/%s", pathc, ekstensi, nama_file);
 
   printf("Asal: %s\nDestinasi: %s\n\n", alamat_asal, destpath);
@@ -220,23 +242,21 @@ void *cek_file(void *arg)
   // Lock mutex
   pthread_mutex_lock(&lock);
 
-  // 1. Ambil nama file
   nama_file = strrchr((char *)arg, '/') + 1;
   alamat_file = (char *)arg;
 
   printf("Nama file: %s\n", nama_file);
   printf("Alamat file: %s\n", alamat_file);
 
-  // 2. Cari ada ekstensi nya atau gak?
   if(cari_ekstensi(nama_file))
   { 
-    cek_folder(cari_ekstensi(nama_file)); // Cek kalau gaada folder ekstensi
-    move_file(path, cari_ekstensi(nama_file), nama_file, alamat_file); // Move file ke folder ekstensi
+    cek_folder(cari_ekstensi(nama_file));
+    move_file(path, cari_ekstensi(nama_file), nama_file, alamat_file);
   }
   else
   { 
-    cek_folder("Unknown"); // Cek kalau gaada folder "Unknown"
-    move_file(path, "Unknown", nama_file, alamat_file); // Move file ke folder "Unknown"
+    cek_folder("Unknown");
+    move_file(path, "Unknown", nama_file, alamat_file);
   }
 
   // Unlock mutex
@@ -252,12 +272,7 @@ int main(int argc, char **argv)
   if((p = strrchr(path, '/')))
     *(p+1) = '\0';
   
-  // printf("Path file c: %s\n", path);
-
   int i = 2;
-  // pthread_t tid[argc - 1];
-
-  // Error handling jika tidak ada argumen yang di input
   if (argc == 0)
   {
     puts("Mohon masukkan argumen pada program (-f, *, atau -d)");
@@ -271,14 +286,18 @@ int main(int argc, char **argv)
     return 1;
   }
   
-  // Testcase tiap argument
   if(strcmp(argv[1], "-f") == 0)
   {
     puts("Masuk ke -f");
     
-    // buat thread
     while (i < argc)
     {
+      if(!is_regular_file(argv[i]))
+      {
+        puts("EXIT not a file");
+        exit(EXIT_FAILURE);
+      }
+
       pthread_create(&(tid), NULL, cek_file, (void *)argv[i]);
       pthread_join(tid, NULL);
       i++;
@@ -288,34 +307,29 @@ int main(int argc, char **argv)
   {
     puts("Masuk ke *");
 
-    // Error handling ketika argumennya lebih
     if (argc > 2)
     {
       puts("Mohon tidak memasukkan argumen lain ketika menggunakan mode *");
       exit(EXIT_FAILURE);
     }
     
-    // List semua path file pada working directory
+    printf("path = ");
+    puts(path);
     list_file(path);
 
-    // Read path tiap line kecuali list_file.txt dan nama program
     read_path(argv[0]);
   }
   else if(strcmp(argv[1], "-d") == 0)
   {
     puts("Masuk ke -d");
 
-    // Error handling ketika path directory yang dimasukkan lebih dari 1
     if (argc > 3)
     {
       puts("Mohon hanya memasukkan satu path directory!");
       exit(EXIT_FAILURE);
     }
     
-    // List semua path dari file untuk kemudian diproses oleh thread
     list_file(argv[2]);
-
-    // Read path tiap line kecuali list_file.txt dan nama program
     read_path(argv[0]);
   }
 

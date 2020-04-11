@@ -1,98 +1,83 @@
-#include <stdio.h> 
-#include <pthread.h> 
-#include <unistd.h> 
-#include <stdlib.h> 
-#include <sys/ipc.h> 
-#include <sys/shm.h> 
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/shm.h>
+#include <sys/stat.h>
+#include <pthread.h>
+#include <sys/ipc.h>
 
-void *mult(void* arg) 
-{ 
-  int *data = (int *)arg; 
-  int k = 0, i = 0; 
 
-  int x = data[0]; 
-  for (i = 1; i <= x; i++)
-    k += data[i]*data[i+x]; 
+int (*value)[10];
+int hasil = 0;
+int matA[10][10], matB[10][10], 
+                        RowOf_A =4 , ColumnOf_A=2, RowOf_B=2, ColumnOf_B=5; 
+pthread_t thread1, thread2, final; 
 
-  int *p = (int*)malloc(sizeof(int)); 
-  *p = k; 
+//matriks pertama
+void *A(void *arg) { 
+   matA[0][0]=2; 
+   matA[0][1]=1; 
+   matA[1][0]=4; 
+   matA[1][1]=3; 
+   matA[2][0]=2; 
+   matA[2][1]=1; 
+   matA[3][0]=4; 
+   matA[3][1]=3;
+   return NULL;
+}
 
-  pthread_exit(p); 
-} 
+void *B(void *arg){
+   matB[0][0]=4;
+   matB[0][1]=1; 
+   matB[0][2]=2;
+   matB[0][3]=3; 
+   matB[0][4]=1; 
+   matB[1][0]=2;
+   matB[1][1]=1; 
+   matB[1][2]=3; 
+   matB[1][3]=1; 
+   matB[1][4]=3; 
+   return NULL;
+}
 
-int main() 
-{ 
-  int matA[4][2] = { {1,  20 },
-                     {4,  17 },
-                     {7,  8 },
-                     {1,  12 } };
-  int matB[2][5] = { { 1,  3,  2,  14,  9 },
-                     {19,  2, 16,  13,  1 } };
+void *matrix_multiplication(void *arg){
+   for(int i=0;i<RowOf_A;i++){
+      for(int j=0;j<ColumnOf_B;j++){
+         for(int k=0;k<ColumnOf_A;k++){
+            hasil+=matA[i][k] * matB[k][j]; 
+         }
+         value[i][j]= hasil; 
+         hasil = 0; 
+      }
+   }
+   return NULL;
+}
 
-  int r1=4;
-  int c1=2;
-  int r2=2;
-  int c2=5;
-  int i,j,k; 
-  int val = 1;
+int main(){
+   
+   key_t key = 1234;
+   int shmid = shmget(key, sizeof(int[10][10]), IPC_CREAT | 0666); 
+   value = shmat(shmid, 0, 0);
 
-  printf("First Matrix:\n");
-  for (i = 0; i < r1; i++){ 
-    for(j = 0; j < c1; j++) 
-     printf("%-2d ",matA[i][j]); 
-    printf("\n"); 
-  } 
+   pthread_create(&thread1, NULL, A, NULL); 
+   pthread_join(thread1,NULL);
 
-  printf("Second Matrix:\n");
-  for (i = 0; i < r2; i++){ 
-    for(j = 0; j < c2; j++) 
-      printf("%-2d ",matB[i][j]); 
-    printf("\n");     
-  } 
+   pthread_create(&thread2, NULL, B, NULL); 
+   pthread_join(thread2,NULL);
 
-  int max = r1*c2; 
+   for(int i=0;i<RowOf_A;i++){
+      for(int j=0;j<ColumnOf_B;j++){ 
+         value[i][j]=0;
+      }
+      pthread_create(&final, NULL, matrix_multiplication, NULL); 
+      pthread_join(final,NULL);
+   }
 
-  pthread_t *threads; 
-  threads = (pthread_t*)malloc(max*sizeof(pthread_t)); 
-
-  int count = 0; 
-  int* data = NULL; 
-  for (i = 0; i < r1; i++) 
-    for (j = 0; j < c2; j++) 
-    { 
-      data = (int *)malloc((20)*sizeof(int)); 
-      data[0] = c1; 
-
-      for (k = 0; k < c1; k++) 
-      data[k+1] = matA[i][k]; 
-
-      for (k = 0; k < r2; k++) 
-      data[k+c1+1] = matB[k][j]; 
-
-      pthread_create(&threads[count++], NULL,  
-        mult, (void*)(data)); 
-    } 
-
-  key_t key = 1234;
-  int *value;
-
-  int shmid = shmget(key, sizeof(int), IPC_CREAT | 0666);
-  value = shmat(shmid, NULL, 0);
-
-  printf("Result Matrix:\n"); 
-  for (i = 0; i < max; i++)  
-  { 
-    void *k; 
-
-    pthread_join(threads[i], &k); 
-    
-    int *p = (int *)k;
-    value[i] = *p;
-    printf("%-3d ", value[i]); 
-    if ((i + 1) % c2 == 0) 
-      printf("\n"); 
-  }
-  shmdt((void *) value);
-
-  return 0; 
-} 
+  
+   printf("A*B : \n");
+   for(int i=0; i<RowOf_A; i++){ 
+      for(int j=0;j<ColumnOf_B;j++){  
+         printf("%d\t", value[i][j]); 
+      }
+      printf("\n");
+   }
+}
